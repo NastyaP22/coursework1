@@ -7,27 +7,18 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-class CopyVkPhotosToYandex:
+class CopyVkPhotos:
 
     def __init__(self):
         self.vk_token = os.getenv('vk_token')
-        self.version = os.getenv('version')
 
-    def get_headers(self, yandex_token):
-        self.yandex_token = yandex_token
-        return {
-            'Content-Type': 'application/json',
-            'Authorization': f'OAuth {self.yandex_token}'
-        }
-
-    def get_and_upload_photos(self, id, yandex_token, count='5'):
+    def get_photos(self, id, count='5'):
         self.id = id
-        self.yandex_token = yandex_token
         self.count = count
         url_vk = 'https://api.vk.com/method/photos.get'
         params = {'owner_id': id, 
                   'access_token': {self.vk_token}, 
-                  'v': {self.version}, 
+                  'v': '5.131', 
                   'album_id': 'profile',
                   'rev': '1',
                   'extended': '1',
@@ -36,10 +27,23 @@ class CopyVkPhotosToYandex:
                   }
         response = requests.get(url=url_vk, params=params)
         data = response.json()
-        with open('new_file.json', 'w') as f:
-            json.dump(data, f, indent=2)
+        return data
+
+class SendPhotosToYandex:
+    def get_headers(self, yandex_token):
+        self.yandex_token = yandex_token
+        return {
+            'Content-Type': 'application/json',
+            'Authorization': f'OAuth {self.yandex_token}'
+        }
+    
+    def upload_photos(self, yandex_token, data):
+        self.yandex_token = yandex_token
+        self.data = data
         url_yandex = 'https://cloud-api.yandex.net/v1/disk/resources/upload'
         headers = self.get_headers(f'{self.yandex_token}')
+        with open('new_file.json', 'w') as f:
+            json.dump(data, f, indent=2)
         file_names = []
         files_info = []
         res_data = {'files_info': files_info}
@@ -80,9 +84,13 @@ class CopyVkPhotosToYandex:
                     print(f'Ошибка {response.status_code}')
         with open('uploaded_files_info.json', 'w') as res:
             json.dump(res_data, res, indent=2)
-        
-copy_test = CopyVkPhotosToYandex()
-yandex_token = os.getenv('yandex_token')
-# вместо пустой строки нужно ввести id пользователя в вк
-copy_test.get_and_upload_photos('', yandex_token)
 
+
+
+
+copy_test = CopyVkPhotos()
+id = input('Введите id пользователя vk: ')
+data = copy_test.get_photos(id)
+yandex_token = os.getenv('yandex_token')
+send_test = SendPhotosToYandex()
+send_test.upload_photos(yandex_token, data)
